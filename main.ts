@@ -18,8 +18,7 @@ Deno.serve(async (request: Request) => {
       case '/':
         return new Response('Hello, world!')
       case `/${userID}`: {
-        console.log(`url.hostname = ${url.hostname},url.protocol=${url.protocol}event`)
-        const vlessConfig = getVLESSConfig(userID, url.hostname, url.protocol === 'https' ? 443 : 80)
+        const vlessConfig = getVLESSConfig(userID, url.hostname, url.protocol == "https" ? 443 : 80)
         return new Response(`${vlessConfig}`, {
           status: 200,
           headers: {
