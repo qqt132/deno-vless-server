@@ -1,15 +1,14 @@
-import { load } from 'https://deno.land/std@0.224.0/dotenv/mod.ts'
-
-const env = await load()
-const userID = env['UUID'] || 'd342d11e-d424-4583-b36e-524ab1f0afa4'
-const proxyIP = env['PROXYIP'] || ''
+// import { load } from 'https://deno.land/std@0.224.0/dotenv/mod.ts'
+// const env = await load()
+// const userID = env['UUID'] || 'd342d11e-d424-4583-b36e-524ab1f0afa4'
+// const proxyIP = env['PROXYIP'] || ''
+// simplify the flow with fixed userID and no forward IP in this version
+const userID = 'd342d11e-d424-4583-b36e-524ab1f0afa4'
+const proxyIP = ''
 
 if (!isValidUUID(userID)) {
   throw new Error('uuid is not valid')
 }
-
-console.log(Deno.version)
-console.log(Deno.args)
 
 Deno.serve(async (request: Request) => {
   const upgrade = request.headers.get('upgrade') || ''
@@ -19,7 +18,7 @@ Deno.serve(async (request: Request) => {
       case '/':
         return new Response('Hello, world!')
       case `/${userID}`: {
-        const vlessConfig = getVLESSConfig(userID, url.hostname, url.port || (url.protocol === 'https' ? 443 : 80))
+        const vlessConfig = getVLESSConfig(userID, url.hostname, url.protocol === 'https' ? 443 : 80)
         return new Response(`${vlessConfig}`, {
           status: 200,
           headers: {
@@ -117,7 +116,7 @@ async function vlessOverWSHandler(request) {
           )
         },
         close() {
-          log(`readableWebSocketStream is close`)
+          // log(`readableWebSocketStream is close`)
         },
         abort(reason) {
           log(`readableWebSocketStream is abort`, JSON.stringify(reason))
@@ -171,14 +170,6 @@ async function handleTCPOutBound(
   // if the cf connect tcp socket have no incoming data, we retry to redirect ip
   async function retry() {
     const tcpSocket = await connectAndWrite(proxyIP || addressRemote, portRemote)
-    // no matter retry success or not, close websocket
-    // tcpSocket.closed
-    //   .catch((error) => {
-    //     console.log('retry tcpSocket closed error', error)
-    //   })
-    //   .finally(() => {
-    //     safeCloseWebSocket(webSocket)
-    //   })
     remoteSocketToWS(tcpSocket, webSocket, vlessResponseHeader, null, log)
   }
 
@@ -317,7 +308,6 @@ function processVlessHeader(vlessBuffer, userID) {
     case 3:
       addressLength = 16
       const dataView = new DataView(vlessBuffer.slice(addressValueIndex, addressValueIndex + addressLength))
-      // 2001:0db8:85a3:0000:0000:8a2e:0370:7334
       const ipv6: string[] = []
       for (let i = 0; i < 8; i++) {
         ipv6.push(dataView.getUint16(i * 2).toString(16))
@@ -383,17 +373,11 @@ async function remoteSocketToWS(remoteSocket, webSocket, vlessResponseHeader, re
             webSocket.send(new Uint8Array([...vlessHeader, ...chunk]))
             vlessHeader = null
           } else {
-            // seems no need rate limit this, CF seems fix this??..
-            // if (remoteChunkCount > 20000) {
-            // 	// cf one package is 4096 byte(4kb),  4096 * 20000 = 80M
-            // 	await delay(1);
-            // }
             webSocket.send(chunk)
           }
         },
         close() {
-          log(`remoteConnection!.readable is close with hasIncomingData is ${hasIncomingData}`)
-          // safeCloseWebSocket(webSocket); // no need server close websocket frist for some case will casue HTTP ERR_CONTENT_LENGTH_MISMATCH issue, client will send close event anyway.
+          // log(`remoteConnection!.readable is close with hasIncomingData is ${hasIncomingData}`)
         },
         abort(reason) {
           console.error(`remoteConnection!.readable abort`, reason)
