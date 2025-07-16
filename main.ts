@@ -34,13 +34,15 @@ Deno.serve(async (request: Request) => {
   }
 })
 
-async function vlessOverWSHandler(request) {
+// 移除了 async 关键字，因为原函数内没有使用 await 表达式
+function vlessOverWSHandler(request: Request) {
   // websocket server
   // https://docs.deno.com/runtime/manual/runtime/http_server_apis#serving-websockets
   const { socket, response } = Deno.upgradeWebSocket(request)
   let address = ''
   let portWithRandomLog = ''
-  const log = (info, event = '') => {
+  // 修改后，为info参数添加了类型注解string，避免隐式any类型
+  const log = (info: string, event = '') => {
     console.log(`[${address}:${portWithRandomLog}] ${info}`, event)
   }
   const earlyDataHeader = request.headers.get('sec-websocket-protocol') || ''
@@ -81,7 +83,6 @@ async function vlessOverWSHandler(request) {
             // controller.error(message);
             throw new Error(message) // cf seems has bug, controller.error will not end stream
             // webSocket.close(1000, message);
-            return
           }
           // if UDP but port not DNS port, close it
           if (isUDP) {
@@ -90,7 +91,6 @@ async function vlessOverWSHandler(request) {
             } else {
               // controller.error('UDP proxy only enable for DNS which is port 53');
               throw new Error('UDP proxy only enable for DNS which is port 53') // cf seems has bug, controller.error will not end stream
-              return
             }
           }
           // ["version", "附加信息长度 N"]
@@ -204,7 +204,8 @@ function makeReadableWebSocketStream(webSocketServer, earlyDataHeader, log) {
         }
         controller.close()
       })
-      webSocketServer.addEventListener('error', (err) => {
+      // 修改后，为err参数添加了类型注解ErrorEvent，避免隐式any类型
+      webSocketServer.addEventListener('error', (err: ErrorEvent) => {
         log('webSocketServer has error')
         controller.error(err)
       })
